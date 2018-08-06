@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>{{.Title}}</title>
+</head>
+<body>
+  <h1>Make a ShortURL!</h1>
+  {{if .HasNewURL}}
+    <hr>
+    <h3>Created URL: <a href="{{.NewURL}}">{{.NewURL}}</a></h3>
+    <hr>
+  {{end}}
+  <form target="/" method="POST">
+    <input type="text" name="url">
+    <input type="submit" value="Create">
+  </form>
+</body>
+</html>
