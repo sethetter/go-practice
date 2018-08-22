@@ -6,37 +6,33 @@ import (
 )
 
 type Mux struct {
-	add     chan net.Conn
-	remove  chan net.Addr
-	sendMsg chan string
+	ops chan func(map[net.Addr]net.Conn)
 }
 
 func (m *Mux) Add(conn net.Conn) {
-	m.add <- conn
+	m.ops <- func(conns map[net.Addr]net.Conn) {
+		conns[conn.RemoteAddr()] = conn
+	}
 }
 
 func (m *Mux) Remove(addr net.Addr) {
-	m.remove <- addr
+	m.ops <- func(conns map[net.Addr]net.Conn) {
+		delete(conns, addr)
+	}
 }
 
 func (m *Mux) SendMsg(msg string) error {
-	m.sendMsg <- msg
+	m.ops <- func(conns map[net.Addr]net.Conn) {
+		for _, conn := range conns {
+			io.WriteString(conn, msg)
+		}
+	}
 	return nil
 }
 
 func (m *Mux) loop() {
 	conns := make(map[net.Addr]net.Conn)
-	for {
-		select {
-		case conn := <-m.add:
-			conns[conn.RemoteAddr()] = conn
-		case addr := <-m.remove:
-			delete(conns, addr)
-		case msg := <-m.sendMsg:
-			for _, conn := range conns {
-				// TODO: err handling?!
-				io.WriteString(conn, msg)
-			}
-		}
+	for op := range m.ops {
+		op(conns)
 	}
 }
